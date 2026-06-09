@@ -1,5 +1,9 @@
 # Feedsmith — Managed Data Feed Starter
 
+[![CI](https://github.com/Massii-08/managed-data-feed-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/Massii-08/managed-data-feed-starter/actions/workflows/ci.yml)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
 > A runnable FastAPI template that turns a public source into a clean, scheduled,
 > self-healing data feed — and delivers it as CSV, JSON, or a webhook payload.
 
