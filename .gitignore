@@ -1,0 +1,23 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python bytecode / caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build / packaging artifacts
+*.egg-info/
+build/
+dist/
+
+# OS cruft
+.DS_Store
+
+# Secrets — never commit a real .env
+.env
+
+# Scraped outputs — NEVER commit feed data (you operate and own the data,
+# it stays out of version control). Keep delivery files local to the runtime.
+data/

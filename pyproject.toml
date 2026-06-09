@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "feedsmith"
+version = "0.1.0"
+description = "Managed Data Feed starter: scrape a public source on a schedule, enforce a no-PII field policy, monitor health with self-healing, and deliver clean factual data (CSV/JSON/webhook)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Feedsmith" }]
+keywords = ["data-feed", "scraping", "public-data", "fastapi", "scheduler", "monitoring"]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "apscheduler",
+    "beautifulsoup4",
+    "httpx",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+impersonate = ["curl_cffi"]
+
+[project.urls]
+Homepage = "https://github.com/Massii-08"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

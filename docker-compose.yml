@@ -1,0 +1,15 @@
+# Feedsmith — Managed Data Feed starter.
+# Build the image and run the FastAPI control plane. You operate and own the
+# data: delivery outputs are written to the mounted ./data directory on the host.
+services:
+  feed:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist scraped/delivered feed outputs on the host. Kept out of git
+      # (data/ is gitignored) — you own and operate this data.
+      - ./data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped

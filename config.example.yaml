@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------
+# Feedsmith — example managed data feed configuration
+# ---------------------------------------------------------------------------
+# Copy this file to feeds/<your-feed>.yaml and adjust the values below.
+# Feedsmith scrapes a PUBLIC source on a schedule, keeps only factual /
+# non-PII fields, and delivers clean data. You operate and own the data.
+# ---------------------------------------------------------------------------
+
+# Stable identifier for this feed (used as the scheduler job id).
+id: my-feed
+
+# Human-readable identifier of the public source being collected.
+source: books.toscrape.com
+
+# Allowed output fields. These MUST be factual / non-PII data only.
+# Field names that look like personal data (name, email, phone, address,
+# username, profile_url, ip, dob, ...) are REJECTED by the field policy in
+# code and will never appear in the output. Keep this list to public,
+# factual attributes such as prices, stock, ratings, titles, etc.
+fields:
+  - title
+  - price
+  - availability
+  - rating
+
+# Minimum number of seconds between successive fetches (polite rate limit).
+rate_limit_seconds: 1.5
+
+# Optional explicit list of URLs to scrape. Omit to use the scraper default.
+urls:
+  - "https://books.toscrape.com/catalogue/page-1.html"
+
+# When the feed runs. Provide EXACTLY ONE of `interval_seconds` or `cron`.
+schedule:
+  # Variant A — run every N seconds (3600 = hourly):
+  interval_seconds: 3600
+  # Variant B — cron expression (uncomment and remove interval_seconds above).
+  # Standard 5-field crontab: minute hour day-of-month month day-of-week.
+  # Example: run at 06:00 UTC every day:
+  # cron: "0 6 * * *"
+
+# Where clean records are delivered. Choose ONE `kind`.
+output:
+  # Variant 1 — CSV file on disk:
+  kind: csv
+  path: data/my-feed.csv
+
+  # Variant 2 — JSON array file on disk (uncomment and remove the csv block):
+  # kind: json
+  # path: data/my-feed.json
+
+  # Variant 3 — POST the records to a webhook URL (uncomment to use):
+  # kind: webhook
+  # url: "https://example.com/hooks/feedsmith"
