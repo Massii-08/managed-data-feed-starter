@@ -11,3 +11,7 @@ pyyaml>=6.0
 # Optional: TLS impersonation fetcher (showcases the hard-site capability).
 # Install via the extra instead of uncommenting here: pip install '.[impersonate]'
 # curl_cffi>=0.7
+
+# Optional: Parquet delivery sink (columnar output for data / AI pipelines).
+# Install via the extra instead of uncommenting here: pip install '.[parquet]'
+# pyarrow>=14

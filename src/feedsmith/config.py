@@ -18,12 +18,12 @@ class OutputConfig(BaseModel):
     """Delivery configuration for a feed.
 
     Attributes:
-        kind: One of ``"csv"``, ``"json"`` or ``"webhook"``.
-        path: Filesystem path for ``csv`` / ``json`` sinks.
+        kind: One of ``"csv"``, ``"json"``, ``"parquet"`` or ``"webhook"``.
+        path: Filesystem path for ``csv`` / ``json`` / ``parquet`` sinks.
         url: Target URL for the ``webhook`` sink.
     """
 
-    kind: Literal["csv", "json", "webhook"]
+    kind: Literal["csv", "json", "parquet", "webhook"]
     path: Optional[str] = None
     url: Optional[str] = None
 

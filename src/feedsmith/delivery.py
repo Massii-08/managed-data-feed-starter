@@ -1,8 +1,9 @@
-"""Delivery sinks for clean, non-PII records (CSV, JSON, webhook).
+"""Delivery sinks for clean, non-PII records (CSV, JSON, Parquet, webhook).
 
 These sinks take validated :class:`~feedsmith.models.Record` objects and
 persist or transmit them. The webhook poster is injectable so tests run
-fully offline with no network calls.
+fully offline with no network calls, and ``pyarrow`` (Parquet) is imported
+lazily so importing this module never requires the optional dependency.
 """
 from __future__ import annotations
 
@@ -43,6 +44,19 @@ def _ensure_parent_dir(path: str) -> None:
         os.makedirs(parent, exist_ok=True)
 
 
+def _sorted_field_columns(records: List[Record]) -> List[str]:
+    """Return the sorted union of all field keys across ``records``.
+
+    This is the stable column order shared by the file sinks (CSV/Parquet)
+    so heterogeneous records always serialize to the same schema, with any
+    missing key rendered as an empty value / null.
+    """
+    keys: set = set()
+    for record in records:
+        keys.update(record.fields.keys())
+    return sorted(keys)
+
+
 class CsvSink:
     """Write records to a CSV file with a stable, sorted header."""
 
@@ -57,10 +71,7 @@ class CsvSink:
         ``source`` and ``fetched_at`` metadata columns.
         """
         _ensure_parent_dir(self.path)
-        field_keys: set = set()
-        for record in records:
-            field_keys.update(record.fields.keys())
-        header: List[str] = sorted(field_keys) + ["source", "fetched_at"]
+        header: List[str] = _sorted_field_columns(records) + ["source", "fetched_at"]
         with open(self.path, "w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=header)
             writer.writeheader()
@@ -82,6 +93,55 @@ class JsonSink:
         payload: List[Dict[str, Any]] = [_record_row(r) for r in records]
         with open(self.path, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False, indent=2)
+        return self.path
+
+
+def _load_pyarrow():
+    """Import pyarrow lazily, with a clear message if the extra is missing.
+
+    Returns the ``pyarrow`` and ``pyarrow.parquet`` modules. Raises a
+    :class:`RuntimeError` (not :class:`ImportError`) so the failure reads as a
+    setup instruction rather than a stack-trace internal.
+    """
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except ImportError as exc:
+        raise RuntimeError(
+            "ParquetSink requires the optional 'pyarrow' dependency. "
+            "Install it with: pip install 'feedsmith[parquet]'"
+        ) from exc
+    return pa, pq
+
+
+class ParquetSink:
+    """Write records to a columnar Apache Parquet file.
+
+    Parquet is the efficient, typed, columnar format that data warehouses,
+    pandas/polars, and AI/data pipelines load natively and cheaply — making a
+    delivered feed trivial to consume downstream. Requires the optional
+    ``pyarrow`` dependency (``pip install 'feedsmith[parquet]'``), imported
+    lazily so the rest of the package never depends on it.
+    """
+
+    def __init__(self, path: str) -> None:
+        """Store the destination ``path`` for the Parquet output."""
+        self.path = path
+
+    def deliver(self, records: List[Record]) -> str:
+        """Write ``records`` to a Parquet file and return the path.
+
+        The schema is the sorted union of all field keys followed by the
+        ``source`` and ``fetched_at`` metadata columns; keys missing from a
+        given record are written as nulls. An empty record list still writes a
+        valid (empty) Parquet file.
+        """
+        pa, pq = _load_pyarrow()
+        _ensure_parent_dir(self.path)
+        columns: List[str] = _sorted_field_columns(records) + ["source", "fetched_at"]
+        rows: List[Dict[str, Any]] = [_record_row(r) for r in records]
+        data: Dict[str, list] = {col: [row.get(col) for row in rows] for col in columns}
+        pq.write_table(pa.table(data), self.path)
         return self.path
 
 

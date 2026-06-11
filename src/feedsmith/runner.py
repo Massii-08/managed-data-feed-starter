@@ -12,7 +12,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import typing
 
-from feedsmith.delivery import CsvSink, JsonSink, Sink, WebhookSink
+from feedsmith.delivery import CsvSink, JsonSink, ParquetSink, Sink, WebhookSink
 from feedsmith.fetcher import Fetcher, HttpxFetcher, RateLimiter
 from feedsmith.models import FieldPolicy, Record, utcnow_iso
 from feedsmith.monitor import FeedHealth, Monitor
@@ -102,6 +102,8 @@ def _build_sink(output: Any) -> Sink:
         return CsvSink(output.path)
     if output.kind == "json":
         return JsonSink(output.path)
+    if output.kind == "parquet":
+        return ParquetSink(output.path)
     if output.kind == "webhook":
         return WebhookSink(output.url)
     raise ValueError("Unknown output kind: %r" % (output.kind,))

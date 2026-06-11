@@ -1,4 +1,4 @@
-"""Offline tests for delivery sinks (CSV, JSON, webhook)."""
+"""Offline tests for delivery sinks (CSV, JSON, Parquet, webhook)."""
 from __future__ import annotations
 
 import csv
@@ -6,7 +6,9 @@ import json
 import os
 from typing import Any, Dict, List, Tuple
 
-from feedsmith.delivery import CsvSink, JsonSink, WebhookSink
+import pytest
+
+from feedsmith.delivery import CsvSink, JsonSink, ParquetSink, WebhookSink
 from feedsmith.models import Record
 
 
@@ -127,3 +129,62 @@ def test_webhook_sink_empty_records() -> None:
 
     WebhookSink("https://example.test/hook", poster=fake_poster).deliver([])
     assert captured == [("https://example.test/hook", [])]
+
+
+def test_parquet_sink_round_trips(tmp_path) -> None:
+    """ParquetSink writes a Parquet file that reads back to the row shape."""
+    pytest.importorskip("pyarrow")
+    import pyarrow.parquet as pq
+
+    path = os.path.join(str(tmp_path), "deep", "out.parquet")
+    sink = ParquetSink(path)
+    returned = sink.deliver(_sample_records())
+
+    assert returned == path
+    assert os.path.exists(path)
+
+    table = pq.read_table(path)
+    # Schema is sorted field keys + metadata columns (mirrors CsvSink).
+    assert table.column_names == ["price", "title", "source", "fetched_at"]
+    rows = table.to_pylist()
+    assert len(rows) == 2
+    assert rows[0] == {
+        "price": "£10.00",
+        "title": "Book A",
+        "source": "books.toscrape.com",
+        "fetched_at": "2026-01-01T00:00:00+00:00",
+    }
+    assert rows[1]["title"] == "Book B"
+
+
+def test_parquet_sink_unions_field_keys(tmp_path) -> None:
+    """ParquetSink schema is the sorted union; missing keys are null."""
+    pytest.importorskip("pyarrow")
+    import pyarrow.parquet as pq
+
+    path = os.path.join(str(tmp_path), "union.parquet")
+    records = [
+        Record("s", {"a": "1"}, "2026-01-01T00:00:00+00:00"),
+        Record("s", {"b": "2"}, "2026-01-01T00:00:00+00:00"),
+    ]
+    ParquetSink(path).deliver(records)
+
+    table = pq.read_table(path)
+    assert table.column_names == ["a", "b", "source", "fetched_at"]
+    rows = table.to_pylist()
+    # Missing keys serialize as null (None), not empty string.
+    assert rows[0]["a"] == "1" and rows[0]["b"] is None
+    assert rows[1]["a"] is None and rows[1]["b"] == "2"
+
+
+def test_parquet_sink_empty_records(tmp_path) -> None:
+    """ParquetSink writes a valid, empty Parquet file for zero records."""
+    pytest.importorskip("pyarrow")
+    import pyarrow.parquet as pq
+
+    path = os.path.join(str(tmp_path), "empty.parquet")
+    returned = ParquetSink(path).deliver([])
+
+    assert returned == path
+    assert os.path.exists(path)
+    assert pq.read_table(path).to_pylist() == []

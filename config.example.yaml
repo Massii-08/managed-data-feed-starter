@@ -49,6 +49,10 @@ output:
   # kind: json
   # path: data/my-feed.json
 
-  # Variant 3 — POST the records to a webhook URL (uncomment to use):
+  # Variant 3 — Parquet file on disk (columnar; needs: pip install '.[parquet]'):
+  # kind: parquet
+  # path: data/my-feed.parquet
+
+  # Variant 4 — POST the records to a webhook URL (uncomment to use):
   # kind: webhook
   # url: "https://example.com/hooks/feedsmith"

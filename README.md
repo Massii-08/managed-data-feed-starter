@@ -5,7 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 > A runnable FastAPI template that turns a public source into a clean, scheduled,
-> self-healing data feed — and delivers it as CSV, JSON, or a webhook payload.
+> self-healing data feed — delivered as CSV, JSON, Parquet, or a webhook payload,
+> over a REST API or a thin CLI.
 
 Feedsmith scrapes a **public source** on a schedule, enforces a **no-PII field
 policy in code**, monitors feed health with **self-healing**, and ships clean
@@ -25,7 +26,8 @@ Feedsmith is the reference implementation of a **Managed Data Feed**:
 3. **Schedule it** — APScheduler runs the feed on an interval or a cron.
 4. **Monitor and fix it** — a `Monitor` watches consecutive failures and triggers
    an alert plus an optional self-heal hook when a feed goes down.
-5. **Deliver it** — write a CSV/JSON file or POST a webhook payload.
+5. **Deliver it** — write a CSV/JSON/Parquet file or POST a webhook payload,
+   from the REST API or the CLI.
 
 Every stage is plain, typed Python with injectable clocks, sleeps, fetchers, and
 sinks, so the whole thing is **fully testable offline**.
@@ -66,7 +68,8 @@ sinks, so the whole thing is **fully testable offline**.
   with BeautifulSoup into plain factual dicts.
 - **Field policy + transform** (`feedsmith.models`, `feedsmith.transform`) — the
   in-code no-PII enforcement and value normalization.
-- **Sink** (`feedsmith.delivery`) — `CsvSink`, `JsonSink`, `WebhookSink`.
+- **Sink** (`feedsmith.delivery`) — `CsvSink`, `JsonSink`, `ParquetSink`
+  (columnar, behind the `[parquet]` extra), `WebhookSink`.
 - **Monitor + runner + scheduler** (`feedsmith.monitor`, `feedsmith.runner`,
   `feedsmith.scheduler`) — health tracking, self-heal, and orchestration.
 - **Config + API** (`feedsmith.config`, `feedsmith.api`) — YAML-driven feeds and
@@ -116,6 +119,31 @@ sandbox** published specifically for practice. Its e-commerce price/stock data i
 **factual and contains zero PII** by construction. A live demo run (`POST
 /feeds/books-demo/run`, or `scripts/live_smoke.py`) reaches out to that public
 sandbox; **every test, by contrast, runs fully offline** with canned HTML.
+
+---
+
+## CLI
+
+A thin command-line interface ships with the package — the same pipeline, driven
+from a terminal. Together with clean files and the REST API, this is the surface
+that humans **and** LLM-based agents consume natively and cheaply (no per-call
+tool definitions to load). See
+[docs/delivery-and-ai-agents.md](docs/delivery-and-ai-agents.md) for the rationale.
+
+```bash
+# Validate a feed config before running it.
+feedsmith validate feeds/books_demo.yaml
+
+# Run a feed once, delivering to the sink declared in its config.
+feedsmith pull feeds/books_demo.yaml
+
+# Override the delivery format/path on the fly (csv · json · parquet).
+feedsmith pull feeds/books_demo.yaml --format parquet --out data/books.parquet
+```
+
+The same commands work without installing the console script via
+`python -m feedsmith ...`. Parquet output needs the optional extra:
+`pip install '.[parquet]'`.
 
 ---
 
