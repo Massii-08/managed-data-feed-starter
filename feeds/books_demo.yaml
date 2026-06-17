@@ -4,7 +4,7 @@ fields: [title, price, availability, rating]
 rate_limit_seconds: 1.5
 urls: ["https://books.toscrape.com/catalogue/page-1.html"]
 schedule:
-  interval_seconds: 3600
+  interval_seconds: 30
 output:
   kind: csv
   path: data/books-demo.csv

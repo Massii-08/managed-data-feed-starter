@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FakeShop — propulsé par Feedsmith</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { background:#0E0E10; color:#F4F4F5; font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+           max-width:880px; margin:0 auto; padding:32px 20px; }
+    h1 { font-size:22px; } h2 { font-size:16px; color:#A1A1AA; margin-top:32px; }
+    .lead { color:#A1A1AA; }
+    .fs-widget { border:1px solid #27272A; border-radius:14px; padding:16px; background:#161618; }
+    .fs-bar { display:flex; align-items:center; gap:10px; font-size:13px; color:#A1A1AA; margin-bottom:10px; }
+    .fs-dot { color:#71717A; } .fs-count { margin-left:auto; }
+    .fs-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .fs-table th { text-align:left; color:#71717A; font-weight:600; padding:6px 8px; border-bottom:1px solid #27272A; }
+    .fs-table td { padding:6px 8px; border-bottom:1px solid #1F1F23; }
+  </style>
+</head>
+<body>
+  <h1>FakeShop</h1>
+  <p class="lead">Cette page n'a pas de backend. Les données ci-dessous arrivent
+     en direct d'une API Feedsmith hébergée ailleurs, via un seul tag
+     <code>&lt;script&gt;</code>.</p>
+
+  <h2>Catalogue (scraping HTML, sans PII)</h2>
+  <div data-feedsmith data-feed="books-demo" data-fields="title,price,availability,rating"
+       data-api="https://feed.CHANGE-ME" data-limit="10"></div>
+
+  <h2>Prix en direct (bouge à chaque tick)</h2>
+  <div data-feedsmith data-feed="prices-demo" data-fields="pair,price,currency"
+       data-api="https://feed.CHANGE-ME"></div>
+
+  <script src="https://feed.CHANGE-ME/widget.js"></script>
+</body>
+</html>

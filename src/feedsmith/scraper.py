@@ -6,6 +6,7 @@ e-commerce price/stock data is factual and non-PII by construction.
 """
 from __future__ import annotations
 
+import json
 import typing
 from typing import Any, Dict, List, Optional
 
@@ -92,3 +93,41 @@ class BookstoreScraper:
             )
 
         return records
+
+
+class PriceScraper:
+    """Scraper for the public, keyless Coinbase spot price API.
+
+    Each configured URL returns one JSON spot payload
+    (``{"data":{"amount","base","currency"}}``) which becomes one factual,
+    non-PII record ``{"pair","price","currency"}``. Genuinely moving data, so
+    the live SSE stream visibly ticks in the demo.
+    """
+
+    source = "api.coinbase.com"
+    FIELDS = ("pair", "price", "currency")
+
+    def __init__(self, urls: Optional[List[str]] = None) -> None:
+        """Store the spot URLs to fetch (defaults to BTC-EUR and ETH-EUR)."""
+        self._urls = urls if urls is not None else [
+            "https://api.coinbase.com/v2/prices/BTC-EUR/spot",
+            "https://api.coinbase.com/v2/prices/ETH-EUR/spot",
+        ]
+
+    def urls(self) -> List[str]:
+        """Return the configured list of spot URLs."""
+        return list(self._urls)
+
+    def scrape(self, html: str) -> List[Dict[str, Any]]:
+        """Parse one Coinbase spot JSON payload into a price record.
+
+        Returns an empty list if the payload lacks a usable ``base``.
+        """
+        data = json.loads(html).get("data", {}) or {}
+        base = data.get("base", "")
+        currency = data.get("currency", "")
+        amount = data.get("amount", "")
+        if not base:
+            return []
+        return [{"pair": "%s-%s" % (base, currency), "price": amount,
+                 "currency": currency}]

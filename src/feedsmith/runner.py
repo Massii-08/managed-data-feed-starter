@@ -12,11 +12,14 @@ from typing import Any, Callable, List, Optional, Tuple
 
 import typing
 
-from feedsmith.delivery import CsvSink, JsonSink, ParquetSink, Sink, WebhookSink
-from feedsmith.fetcher import Fetcher, HttpxFetcher, RateLimiter
+from feedsmith.delivery import (
+    CsvSink, JsonSink, ParquetSink, Sink, SnapshotSink, TeeSink, WebhookSink,
+)
+from feedsmith.fetcher import Fetcher, HttpxFetcher, ImpersonateFetcher, RateLimiter
+from feedsmith.stealth import StealthFetcher
 from feedsmith.models import FieldPolicy, Record, utcnow_iso
 from feedsmith.monitor import FeedHealth, Monitor
-from feedsmith.scraper import BookstoreScraper, Scraper
+from feedsmith.scraper import BookstoreScraper, PriceScraper, Scraper
 from feedsmith.transform import transform
 
 if typing.TYPE_CHECKING:  # avoid import cycle with config.py
@@ -109,17 +112,43 @@ def _build_sink(output: Any) -> Sink:
     raise ValueError("Unknown output kind: %r" % (output.kind,))
 
 
-def build_runner(config: "FeedConfig") -> Tuple[FeedRunner, FeedHealth]:
+def _build_scraper(config: "FeedConfig") -> Scraper:
+    """Pick the scraper implementation named by ``config.scraper``."""
+    if config.scraper == "price":
+        return PriceScraper(config.urls)
+    return BookstoreScraper(config.urls)
+
+
+def _build_fetcher(config: "FeedConfig", rate: RateLimiter) -> Fetcher:
+    """Pick the fetcher implementation named by ``config.fetcher``."""
+    if config.fetcher == "impersonate":
+        return ImpersonateFetcher(rate)
+    if config.fetcher == "stealth":
+        return StealthFetcher(rate, warm_url=config.warm_url)
+    return HttpxFetcher(rate)
+
+
+def build_runner(
+    config: "FeedConfig",
+    store: Any = None,
+) -> Tuple[FeedRunner, FeedHealth]:
     """Construct a runner from config WITHOUT any network call.
 
-    Wires a rate-limited HTTP fetcher, the bookstore scraper, the field
-    policy, the configured sink, fresh health, and a default monitor.
+    Wires a rate-limited HTTP fetcher, the scraper named by config, the field
+    policy, the configured sink, fresh health, and a default monitor. When a
+    ``store`` is supplied, deliveries are teed to a :class:`SnapshotSink`
+    (first) plus the configured file sink, so the live API is fed without
+    changing the CLI (which passes ``store=None``).
     """
     rate = RateLimiter(config.rate_limit_seconds)
-    fetcher = HttpxFetcher(rate)
-    scraper = BookstoreScraper(config.urls)
+    fetcher = _build_fetcher(config, rate)
+    scraper = _build_scraper(config)
     policy = FieldPolicy(config.fields)
-    sink = _build_sink(config.output)
+    base_sink = _build_sink(config.output)
+    if store is not None:
+        sink: Sink = TeeSink([SnapshotSink(config.id, store), base_sink])
+    else:
+        sink = base_sink
     health = FeedHealth(config.id)
     monitor = Monitor()
     runner = FeedRunner(

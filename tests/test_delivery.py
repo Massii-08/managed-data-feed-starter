@@ -188,3 +188,59 @@ def test_parquet_sink_empty_records(tmp_path) -> None:
     assert returned == path
     assert os.path.exists(path)
     assert pq.read_table(path).to_pylist() == []
+
+
+def test_snapshot_sink_pushes_flat_rows_to_store() -> None:
+    from feedsmith.delivery import SnapshotSink
+    from feedsmith.models import Record
+    from feedsmith.store import SnapshotStore
+
+    store = SnapshotStore()
+    sink = SnapshotSink("books-demo", store)
+    records = [
+        Record(source="books.toscrape.com", fields={"title": "A", "price": "£1"},
+               fetched_at="2026-06-16T10:00:00Z"),
+    ]
+    output = sink.deliver(records)
+    assert output == "snapshot://books-demo"
+    latest = store.latest("books-demo")
+    assert latest is not None
+    assert latest.fetched_at == "2026-06-16T10:00:00Z"
+    assert latest.records == [
+        {"title": "A", "price": "£1", "source": "books.toscrape.com",
+         "fetched_at": "2026-06-16T10:00:00Z"},
+    ]
+
+
+def test_snapshot_sink_handles_empty_records() -> None:
+    from feedsmith.delivery import SnapshotSink
+    from feedsmith.store import SnapshotStore
+
+    store = SnapshotStore()
+    sink = SnapshotSink("books-demo", store)
+    output = sink.deliver([])
+    assert output == "snapshot://books-demo"
+    latest = store.latest("books-demo")
+    assert latest is not None
+    assert latest.records == []
+    assert latest.fetched_at is None
+
+
+def test_tee_sink_delivers_to_every_child_and_joins_outputs() -> None:
+    from feedsmith.delivery import TeeSink
+
+    class _RecordingSink:
+        def __init__(self, label: str) -> None:
+            self.label = label
+            self.calls = 0
+
+        def deliver(self, records):
+            self.calls += 1
+            return self.label
+
+    a = _RecordingSink("snapshot://books-demo")
+    b = _RecordingSink("data/books-demo.csv")
+    tee = TeeSink([a, b])
+    out = tee.deliver([])
+    assert a.calls == 1 and b.calls == 1
+    assert out == "snapshot://books-demo | data/books-demo.csv"

@@ -1,0 +1,13 @@
+id: prices-demo
+source: api.coinbase.com
+scraper: price
+fields: [pair, price, currency]
+rate_limit_seconds: 1.0
+urls:
+  - "https://api.coinbase.com/v2/prices/BTC-EUR/spot"
+  - "https://api.coinbase.com/v2/prices/ETH-EUR/spot"
+schedule:
+  interval_seconds: 15
+output:
+  kind: json
+  path: data/prices-demo.json

@@ -104,3 +104,28 @@ def test_scrape_empty_html() -> None:
     scraper = BookstoreScraper()
     result: List = scraper.scrape("<html><body><p>nothing here</p></body></html>")
     assert result == []
+
+
+def test_price_scraper_parses_coinbase_spot_payload() -> None:
+    from feedsmith.scraper import PriceScraper
+
+    payload = '{"data":{"amount":"58234.91","base":"BTC","currency":"EUR"}}'
+    scraper = PriceScraper(["https://api.coinbase.com/v2/prices/BTC-EUR/spot"])
+    assert scraper.source == "api.coinbase.com"
+    rows = scraper.scrape(payload)
+    assert rows == [{"pair": "BTC-EUR", "price": "58234.91", "currency": "EUR"}]
+
+
+def test_price_scraper_default_urls_cover_two_pairs() -> None:
+    from feedsmith.scraper import PriceScraper
+
+    urls = PriceScraper().urls()
+    assert any("BTC-EUR" in u for u in urls)
+    assert any("ETH-EUR" in u for u in urls)
+
+
+def test_price_scraper_returns_empty_on_malformed_payload() -> None:
+    from feedsmith.scraper import PriceScraper
+
+    scraper = PriceScraper()
+    assert scraper.scrape('{"data":{}}') == []

@@ -25,6 +25,7 @@ dependencies = [
 dev = ["pytest"]
 impersonate = ["curl_cffi"]
 parquet = ["pyarrow"]
+stealth = ["patchright"]
 
 [project.scripts]
 feedsmith = "feedsmith.cli:main"

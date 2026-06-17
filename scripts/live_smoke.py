@@ -35,5 +35,29 @@ def main() -> None:
         print("  -", rec)
 
 
+def smoke_live_feeds() -> None:
+    """Run both demo feeds once against their real sources (network)."""
+    import os
+
+    from feedsmith.api import REPO_ROOT
+    from feedsmith.config import load_feed_config
+    from feedsmith.runner import build_runner
+    from feedsmith.store import SnapshotStore
+
+    store = SnapshotStore()
+    for name in ("books_demo.yaml", "prices_demo.yaml"):
+        config = load_feed_config(os.path.join(REPO_ROOT, "feeds", name))
+        runner, _ = build_runner(config, store=store)
+        result = runner.run_once()
+        snap = store.latest(config.id)
+        print("%s ok=%s count=%s stored=%s"
+              % (config.id, result.ok, result.record_count,
+                 0 if snap is None else len(snap.records)))
+        assert result.ok, "feed %s failed: %s" % (config.id, result.error)
+        assert snap is not None and snap.records, "feed %s empty" % config.id
+
+
 if __name__ == "__main__":
     main()
+    print()
+    smoke_live_feeds()

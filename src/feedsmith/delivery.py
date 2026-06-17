@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional
 import typing
 
 from feedsmith.models import Record
+from feedsmith.store import SnapshotStore
 
 
 class Sink(typing.Protocol):
@@ -173,3 +174,37 @@ class WebhookSink:
         poster = self.poster if self.poster is not None else self._default_poster
         poster(self.url, payload)
         return self.url
+
+
+class SnapshotSink:
+    """Push the latest clean records into an in-memory SnapshotStore.
+
+    This is the live-API delivery target: it flattens records to the same row
+    shape as the file sinks (via :func:`_record_row`) and stores them under the
+    feed id so ``/feeds/{id}/data`` and ``/feeds/{id}/stream`` can serve them.
+    """
+
+    def __init__(self, feed_id: str, store: SnapshotStore) -> None:
+        """Store the feed id and the shared snapshot store."""
+        self.feed_id = feed_id
+        self.store = store
+
+    def deliver(self, records: List[Record]) -> str:
+        """Flatten records, update the store, return a snapshot label."""
+        rows = [_record_row(r) for r in records]
+        fetched_at = records[0].fetched_at if records else None
+        self.store.update(self.feed_id, rows, fetched_at)
+        return "snapshot://%s" % self.feed_id
+
+
+class TeeSink:
+    """Fan a single delivery out to several sinks (e.g. snapshot + file)."""
+
+    def __init__(self, sinks: List[Sink]) -> None:
+        """Store the ordered list of child sinks."""
+        self.sinks = list(sinks)
+
+    def deliver(self, records: List[Record]) -> str:
+        """Deliver to each child in order and join their outputs."""
+        outputs = [sink.deliver(records) for sink in self.sinks]
+        return " | ".join(outputs)

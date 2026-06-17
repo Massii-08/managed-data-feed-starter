@@ -64,6 +64,9 @@ class FeedConfig(BaseModel):
 
     id: str
     source: str
+    scraper: Literal["bookstore", "price"] = "bookstore"
+    fetcher: Literal["httpx", "impersonate", "stealth"] = "httpx"
+    warm_url: Optional[str] = None
     fields: List[str]
     rate_limit_seconds: float = 1.0
     urls: Optional[List[str]] = None

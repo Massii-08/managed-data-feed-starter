@@ -75,6 +75,26 @@ sinks, so the whole thing is **fully testable offline**.
 - **Config + API** (`feedsmith.config`, `feedsmith.api`) — YAML-driven feeds and
   the FastAPI control plane.
 
+### Fetcher tiers
+
+Each feed picks a fetcher via `fetcher:` in its YAML (default `httpx`):
+
+- `httpx` — default; clean, permitted, public sources. The durable core.
+- `impersonate` — curl_cffi TLS impersonation for harder public sites (`pip install '.[impersonate]'`).
+- `stealth` — real Chrome via patchright for Cloudflare-protected sources
+  (`pip install '.[stealth]'`). Set `warm_url:` to a page of the target domain to
+  warm the `cf_clearance` cookie. Run under `xvfb-run` (headful passes the managed
+  challenge; pure headless does not) and keep stealth feeds serial (patchright is
+  not thread-safe).
+
+**Honest limit:** the `stealth` tier *minimises* bot-detection — it does not
+*guarantee* it. It is best-effort, opt-in per feed; clean, permitted sources
+(the default tier) remain the reliable, low-risk core of the service.
+
+**CORS (deploy):** the live API defaults `FEEDSMITH_CORS_ORIGINS=*` (fine for
+public, non-PII GET data). Pin it to your demo/client origin in production to
+avoid third parties consuming your bandwidth/quotas.
+
 ---
 
 ## Quickstart

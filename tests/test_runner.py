@@ -267,3 +267,93 @@ def test_build_runner_webhook_output() -> None:
     runner, _health = build_runner(config)
     assert isinstance(runner.sink, WebhookSink)
     assert runner.sink.url == "https://example.test/hook"
+
+
+def test_build_runner_without_store_uses_plain_sink() -> None:
+    from feedsmith.config import FeedConfig
+    from feedsmith.delivery import TeeSink
+    from feedsmith.runner import build_runner
+
+    config = FeedConfig.model_validate({
+        "id": "books-demo", "source": "books.toscrape.com",
+        "fields": ["title"], "schedule": {"interval_seconds": 30},
+        "output": {"kind": "csv", "path": "data/x.csv"},
+    })
+    runner, _ = build_runner(config)
+    assert not isinstance(runner.sink, TeeSink)
+
+
+def test_build_runner_with_store_tees_to_snapshot_first() -> None:
+    from feedsmith.config import FeedConfig
+    from feedsmith.delivery import SnapshotSink, TeeSink
+    from feedsmith.runner import build_runner
+    from feedsmith.store import SnapshotStore
+
+    store = SnapshotStore()
+    config = FeedConfig.model_validate({
+        "id": "books-demo", "source": "books.toscrape.com",
+        "fields": ["title"], "schedule": {"interval_seconds": 30},
+        "output": {"kind": "csv", "path": "data/x.csv"},
+    })
+    runner, _ = build_runner(config, store=store)
+    assert isinstance(runner.sink, TeeSink)
+    assert isinstance(runner.sink.sinks[0], SnapshotSink)
+
+
+def test_build_runner_selects_price_scraper() -> None:
+    from feedsmith.config import FeedConfig
+    from feedsmith.runner import build_runner
+    from feedsmith.scraper import PriceScraper
+
+    config = FeedConfig.model_validate({
+        "id": "prices-demo", "source": "api.coinbase.com", "scraper": "price",
+        "fields": ["pair", "price", "currency"],
+        "schedule": {"interval_seconds": 15},
+        "output": {"kind": "json", "path": "data/p.json"},
+    })
+    runner, _ = build_runner(config)
+    assert isinstance(runner.scraper, PriceScraper)
+
+
+def test_build_runner_default_fetcher_is_httpx() -> None:
+    from feedsmith.config import FeedConfig
+    from feedsmith.fetcher import HttpxFetcher
+    from feedsmith.runner import build_runner
+
+    config = FeedConfig.model_validate({
+        "id": "f", "source": "s", "fields": ["a"],
+        "schedule": {"interval_seconds": 30},
+        "output": {"kind": "csv", "path": "data/x.csv"},
+    })
+    runner, _ = build_runner(config)
+    assert isinstance(runner.fetcher, HttpxFetcher)
+
+
+def test_build_runner_selects_stealth_fetcher() -> None:
+    from feedsmith.config import FeedConfig
+    from feedsmith.runner import build_runner
+    from feedsmith.stealth import StealthFetcher
+
+    config = FeedConfig.model_validate({
+        "id": "f", "source": "s", "fields": ["a"], "fetcher": "stealth",
+        "warm_url": "https://target/",
+        "schedule": {"interval_seconds": 30},
+        "output": {"kind": "csv", "path": "data/x.csv"},
+    })
+    runner, _ = build_runner(config)
+    assert isinstance(runner.fetcher, StealthFetcher)
+    assert runner.fetcher.warm_url == "https://target/"
+
+
+def test_build_runner_selects_impersonate_fetcher() -> None:
+    from feedsmith.config import FeedConfig
+    from feedsmith.fetcher import ImpersonateFetcher
+    from feedsmith.runner import build_runner
+
+    config = FeedConfig.model_validate({
+        "id": "f", "source": "s", "fields": ["a"], "fetcher": "impersonate",
+        "schedule": {"interval_seconds": 30},
+        "output": {"kind": "csv", "path": "data/x.csv"},
+    })
+    runner, _ = build_runner(config)
+    assert isinstance(runner.fetcher, ImpersonateFetcher)
