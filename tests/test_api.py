@@ -214,6 +214,9 @@ def test_stream_endpoint_streams_event_stream_content_type(monkeypatch) -> None:
     with client.stream("GET", "/feeds/books-demo/stream") as resp:
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
+        # Anti-buffering headers so CDNs/proxies stream events promptly.
+        assert resp.headers.get("cache-control") == "no-cache"
+        assert resp.headers.get("x-accel-buffering") == "no"
         first = next(resp.iter_lines())
         assert first == "event: update"
 

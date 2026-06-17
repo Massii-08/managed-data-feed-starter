@@ -195,6 +195,13 @@ def create_app(
         return StreamingResponse(
             sse_events(store, feed_id, stale_fn=_stale),
             media_type="text/event-stream",
+            headers={
+                # Discourage proxy/CDN buffering of the event stream so updates
+                # reach the browser promptly (CloudFlare/nginx honour these).
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
         )
 
     @app.get("/widget.js")

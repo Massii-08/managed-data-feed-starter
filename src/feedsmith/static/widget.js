@@ -25,12 +25,20 @@
     var f = el.getAttribute("data-fields");
     this.fields = f ? f.split(",").map(function (s) { return s.trim(); }) : null;
     this.limit = parseInt(el.getAttribute("data-limit") || "0", 10) || 0;
+    // Poll fallback (ms): keeps data fresh even when a CDN/proxy buffers the SSE
+    // stream. SSE (when it gets through) gives instant updates; this guarantees
+    // freshness regardless. Override with data-poll; 0 disables polling.
+    var pollAttr = el.getAttribute("data-poll");
+    this.pollMs = pollAttr === null ? 15000 : (parseInt(pollAttr, 10) || 0);
     this.lastFetched = null;
     this.render({ count: 0, records: [], stale: true }, "connecting");
     this.load();
     this.subscribe();
     var self = this;
     setInterval(function () { self.tick(); }, 1000);
+    if (this.pollMs > 0) {
+      setInterval(function () { self.load(); }, this.pollMs);
+    }
   }
 
   FeedWidget.prototype.url = function (suffix) {
